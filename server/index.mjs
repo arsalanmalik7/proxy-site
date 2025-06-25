@@ -1,49 +1,58 @@
 import express from 'express';
-import axios from 'axios';
-import { HttpsProxyAgent } from 'https-proxy-agent';
-import { SocksProxyAgent } from 'socks-proxy-agent';
-import dns from 'dns';
-import cloudscraper from 'cloudscraper';
+import fs from 'fs';
+import path from 'path';
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import cors from 'cors';
+import { fileURLToPath } from 'url';
+import pkg from 'uuid';
+const { v4: uuidv4 } = pkg;
 
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = 3001;
+const PUBLIC_DIR = path.join(__dirname, 'public');
 
+puppeteer.use(StealthPlugin());
+app.use(cors());
+app.use('/public', express.static(PUBLIC_DIR));
 
+app.get('/load-page', async (req, res) => {
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
 
+  try {
+    const page = await browser.newPage();
+    await page.setUserAgent(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125.0.0.0 Safari/537.36'
+    );
 
-app.get('/proxy-iframe-content', async (req, res) => {
-    const targetUrl = req.query.url;
-    const ipInfo = await axios.get('https://ipinfo.io/json');
-    console.log('IP Info:', ipInfo.data);
-    if (!targetUrl) {
-        return res.status(400).send('Target URL is required.');
-    }
+    await page.goto('https://www.bpexch.com/', {
+      waitUntil: 'networkidle2',
+      timeout: 60000,
+    });
 
-    try {
-        const urlObj = new URL(targetUrl);
+    const content = await page.content();
+    console.log(content)
+    const fileName = `${uuidv4()}.html`;
+    const filePath = path.join(PUBLIC_DIR, fileName);
 
-        // Now we can do a proper DNS lookup
-        dns.lookup(urlObj.hostname, (err, address) => {
-            console.log('DNS lookup:', err || address);
-        });
+    fs.writeFileSync(filePath, content);
 
-        const html = await cloudscraper.get({
-            uri: targetUrl,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/125.0.0.0 Safari/537.36',
-                Referer: 'https://www.google.com/'
-            }
-        });
-
-        res.send(html);
-    } catch (error) {
-        console.error('Proxy error:', error);
-        res.status(500).send('Error fetching content via proxy.');
-    }
-
+    const tempUrl = `http://localhost:3001/public/${fileName}`;
+    res.json({ tempUrl });
+  } catch (err) {
+    console.error('Puppeteer Error:', err.message);
+    res.status(500).json({ error: 'Failed to load page' });
+  } finally {
+    await browser.close();
+  }
 });
 
 app.listen(PORT, () => {
-    console.log(`Proxy server listening on port ${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
