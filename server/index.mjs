@@ -3,6 +3,8 @@ import axios from 'axios';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { SocksProxyAgent } from 'socks-proxy-agent';
 import dns from 'dns';
+import cloudscraper from 'cloudscraper';
+
 
 const app = express();
 const PORT = 3001;
@@ -26,21 +28,15 @@ app.get('/proxy-iframe-content', async (req, res) => {
             console.log('DNS lookup:', err || address);
         });
 
-        const response = await axios.get(targetUrl, {
+        const html = await cloudscraper.get({
+            uri: targetUrl,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Referer': 'https://www.google.com/',
-                'Connection': 'keep-alive',
-                'Upgrade-Insecure-Requests': '1',
-                'Cache-Control': 'no-cache'
-            },
-            timeout: 10000,
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/125.0.0.0 Safari/537.36',
+                Referer: 'https://www.google.com/'
+            }
         });
 
-
-        res.send(response.data);
+        res.send(html);
     } catch (error) {
         console.error('Proxy error:', error);
         res.status(500).send('Error fetching content via proxy.');
