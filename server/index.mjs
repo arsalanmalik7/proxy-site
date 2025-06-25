@@ -30,7 +30,7 @@ app.get('/proxy-iframe-content', async (req, res) => {
 
         res.send(response.data);
     } catch (error) {
-        console.error('Proxy error:', error.message);
+        console.error('Proxy error:', error);
         res.status(500).send('Error fetching content via proxy.');
     }
 
