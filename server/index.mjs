@@ -11,6 +11,8 @@ puppeteer.use(StealthPlugin());
 
 
 app.get('/open-page', async (req, res) => {
+  console.log('Executable path:', puppeteer.executablePath());
+
   const proxyHost = 'proxy-us.proxy-cheap.com';
   const proxyPort = '5959';
   const proxyUsername = 'pcGFxBOiBi-res-any';
@@ -19,14 +21,15 @@ app.get('/open-page', async (req, res) => {
   const proxyUrl = `http://${proxyHost}:${proxyPort}`;
 
   const browser = await puppeteer.launch({
-    headless: false, // set to true for background
-    ignoreHttpsErrors: true,
+    headless: true,
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
-      `--proxy-server=${proxyUrl}`,
+      `--proxy-server=http://${proxyHost}:${proxyPort}`,
     ],
   });
+
 
   try {
     const page = await browser.newPage();
