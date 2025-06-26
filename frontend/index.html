@@ -10,7 +10,7 @@
 
     <script>
       async function openSite() {
-        const res = await fetch("http://localhost:3001/open-page");
+        const res = await fetch("https://proxy-site-j8l0.onrender.com/open-page");
         const data = await res.json();
         window.open(data.url, "_blank");
       }
