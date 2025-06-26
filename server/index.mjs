@@ -1,49 +1,48 @@
 import express from 'express';
-import axios from 'axios';
-import { HttpsProxyAgent } from 'https-proxy-agent';
-import { SocksProxyAgent } from 'socks-proxy-agent';
-import dns from 'dns';
-import cloudscraper from 'cloudscraper';
-
+import puppeteer from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 
 const app = express();
 const PORT = 3001;
 
+puppeteer.use(StealthPlugin());
 
+app.get('/open-page', async (req, res) => {
+  const proxy = ''; // optional: add your proxy URL here like 'http://123.123.123.123:8080'
 
+  const browser = await puppeteer.launch({
+    headless: false, // show browser window
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      ...(proxy ? [`--proxy-server=${proxy}`] : [])
+    ],
+  });
 
-app.get('/proxy-iframe-content', async (req, res) => {
-    const targetUrl = req.query.url;
-    const ipInfo = await axios.get('https://ipinfo.io/json');
-    console.log('IP Info:', ipInfo.data);
-    if (!targetUrl) {
-        return res.status(400).send('Target URL is required.');
-    }
+  try {
+    const page = await browser.newPage();
 
-    try {
-        const urlObj = new URL(targetUrl);
+    await page.setUserAgent(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125.0.0.0 Safari/537.36'
+    );
 
-        // Now we can do a proper DNS lookup
-        dns.lookup(urlObj.hostname, (err, address) => {
-            console.log('DNS lookup:', err || address);
-        });
+    await page.goto('https://www.bpexch.com', {
+      waitUntil: 'domcontentloaded',
+      timeout: 60000,
+    });
+    // await page.waitForTimeout(5000); // wait for 5 seconds to ensure the page loads
+    // await page.evaluate(() => {
+    //   // This will open the link in a new tab
+    //   window.open('https://www.bpexch.com', '_blank');
+    // });
 
-        const html = await cloudscraper.get({
-            uri: targetUrl,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/125.0.0.0 Safari/537.36',
-                Referer: 'https://www.google.com/'
-            }
-        });
-
-        res.send(html);
-    } catch (error) {
-        console.error('Proxy error:', error);
-        res.status(500).send('Error fetching content via proxy.');
-    }
-
+    res.send('Website opened in new browser tab!');
+  } catch (err) {
+    console.error('Puppeteer Error:', err.message);
+    res.status(500).send('Failed to open page');
+  }
 });
 
 app.listen(PORT, () => {
-    console.log(`Proxy server listening on port ${PORT}`);
+  console.log(`Server running on ${PORT}`);
 });
